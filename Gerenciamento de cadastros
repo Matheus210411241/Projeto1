@@ -1,0 +1,203 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX 100
+
+typedef struct {
+    int id;
+    char nome[50];
+    int idade;
+} Pessoa;
+
+
+void cadastrar();
+void consultar();
+void gerarRelatorio();
+void excluir();
+void exibirMenu();
+
+int main() {
+    int opcao;
+
+    do {
+        exibirMenu();
+        printf("Digite sua opcao: ");
+        if (scanf("%d", &opcao) != 1) { 
+            printf("Entrada invalida! Digite um numero.\n");
+            while (getchar() != '\n');
+            continue;
+        }
+
+        switch (opcao) {
+            case 1:
+                cadastrar();
+                break;
+            case 2:
+                consultar();
+                break;
+            case 3:
+                gerarRelatorio();
+                break;
+            case 4:
+                excluir();
+                break;
+            case 0:
+                printf("Saindo do programa...\n");
+                break;
+            default:
+                printf("Opcao invalida! Tente novamente.\n");
+        }
+
+    } while (opcao != 0);
+
+    return 0;
+}
+
+void exibirMenu() {
+    printf("\n=== MENU PRINCIPAL ===\n");
+    printf("1 - Cadastro\n");
+    printf("2 - Consulta\n");
+    printf("3 - Gerar Relatorio\n");
+    printf("4 - Excluir\n");
+    printf("0 - Sair\n");
+}
+
+void cadastrar() {
+    Pessoa p;
+    FILE *file = fopen("dados.dat", "ab");
+
+    if (!file) {
+        perror("Erro ao abrir arquivo");
+        return;
+    }
+
+    printf("\n--- Cadastro de Pessoa ---\n");
+    printf("ID (numero inteiro): ");
+    while (scanf("%d", &p.id) != 1) { 
+        printf("Entrada invalida! Digite um numero inteiro.\nID: ");
+        while (getchar() != '\n'); 
+    }
+    getchar(); 
+
+    printf("Nome: ");
+    fgets(p.nome, sizeof(p.nome), stdin);
+    p.nome[strcspn(p.nome, "\n")] = '\0'; 
+
+    printf("Idade: ");
+    while (scanf("%d", &p.idade) != 1) { 
+        printf("Entrada invalida! Digite um numero inteiro.\nIdade: ");
+        while (getchar() != '\n'); 
+    }
+
+    fwrite(&p, sizeof(Pessoa), 1, file);
+    fclose(file);
+
+    printf("Cadastro realizado com sucesso!\n");
+}
+
+void consultar() {
+    int idBusca;
+    Pessoa p;
+    FILE *file = fopen("dados.dat", "rb");
+
+    if (!file) {
+        perror("Erro ao abrir arquivo");
+        return;
+    }
+
+    printf("\n--- Consulta de Pessoa ---\n");
+    printf("Digite o ID da pessoa: ");
+    while (scanf("%d", &idBusca) != 1) { 
+        printf("Entrada invalida! Digite um numero inteiro.\nID: ");
+        while (getchar() != '\n'); 
+    }
+
+    int encontrado = 0;
+    while (fread(&p, sizeof(Pessoa), 1, file)) {
+        if (p.id == idBusca) {
+            printf("\nPessoa encontrada:\n");
+            printf("ID: %d\n", p.id);
+            printf("Nome: %s\n", p.nome);
+            printf("Idade: %d\n", p.idade);
+            encontrado = 1;
+            break;
+        }
+    }
+
+    if (!encontrado) {
+        printf("Pessoa com ID %d nao encontrada.\n", idBusca);
+    }
+
+    fclose(file);
+}
+
+void gerarRelatorio() {
+    Pessoa p;
+    FILE *file = fopen("dados.dat", "rb");
+
+    if (!file) {
+        perror("Erro ao abrir arquivo");
+        return;
+    }
+
+    printf("\n--- Relatorio de Pessoas ---\n");
+    printf("%-5s %-30s %-10s\n", "ID", "Nome", "Idade");
+    printf("--------------------------------------------\n");
+
+    int count = 0;
+    while (fread(&p, sizeof(Pessoa), 1, file)) {
+        printf("%-5d %-30s %-10d\n", p.id, p.nome, p.idade);
+        count++;
+    }
+
+    if (count == 0) {
+        printf("Nenhuma pessoa cadastrada.\n");
+    }
+
+    fclose(file);
+}
+
+void excluir() {
+    int idExcluir;
+    Pessoa p;
+    FILE *file = fopen("dados.dat", "rb");
+    FILE *tempFile = fopen("temp.dat", "wb");
+
+    if (!file || !tempFile) {
+        perror("Erro ao abrir arquivo");
+        if (file) fclose(file);
+        if (tempFile) fclose(tempFile);
+        return;
+    }
+
+    printf("\n--- Exclusao de Pessoa ---\n");
+    printf("Digite o ID da pessoa a ser excluida: ");
+    while (scanf("%d", &idExcluir) != 1) { 
+        printf("Entrada invalida! Digite um numero inteiro.\nID: ");
+        while (getchar() != '\n'); 
+    }
+
+    int encontrado = 0;
+    while (fread(&p, sizeof(Pessoa), 1, file)) {
+        if (p.id == idExcluir) {
+            encontrado = 1;
+        } else {
+            fwrite(&p, sizeof(Pessoa), 1, tempFile);
+        }
+    }
+
+    fclose(file);
+    fclose(tempFile);
+
+    if (encontrado) {
+        if (remove("dados.dat") == 0 && rename("temp.dat", "dados.dat") == 0) {
+            printf("Pessoa com ID %d excluida com sucesso!\n", idExcluir);
+        } else {
+            printf("Erro ao atualizar os arquivos.\n");
+        }
+    } else {
+        printf("Pessoa com ID %d nao encontrada.\n", idExcluir);
+        remove("temp.dat"); 
+    }
+}
